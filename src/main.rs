@@ -87,18 +87,18 @@ fn main() {
 
     let username = std::env::var("USER").unwrap_or_else(|_| "default".to_string());
 
-    let commands = config
+    let command = config
         .user_commands
         .as_ref()
-        .and_then(|user_cmds| user_cmds.get(&username))
-        .unwrap_or_else(|| &config.commands);
+        .and_then(|user_cmds| {
+            user_cmds
+                .get(&username)
+                .and_then(|cmds| cmds.get(&command_alias))
+        })
+        .or_else(|| config.commands.get(&command_alias))
+        .unwrap_or_else(|| die!("Undefined command alias: {}", command_alias));
 
-    let full_command = match commands.get(&command_alias) {
-        Some(cmd) => cmd,
-        None => die!("Undefined command alias: {}", command_alias),
-    };
-
-    let exitcode = run_command(full_command, &command_args).unwrap_or(1);
+    let exitcode = run_command(command, &command_args).unwrap_or(1);
 
     std::process::exit(exitcode);
 }
