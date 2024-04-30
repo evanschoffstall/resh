@@ -31,21 +31,21 @@ Undefined command alias: bar
 hello
 ```
 
+Or interactive mode:
+
+```sh
+# su - example_user
+resh >
+# foo
+hello
+resh >
+```
+
 using ssh:
 
 ```sh
 $ ssh example_user@localhost foo
 hello
-```
-
-Or interactive mode:
-
-```sh
-# ./resh
-resh >
-# foo
-hello
-resh >
 ```
 
 ### Alternative config file locations
