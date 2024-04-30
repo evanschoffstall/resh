@@ -6,7 +6,7 @@ use std::{
     collections::BTreeMap,
     error::Error,
     fs::File,
-    io::{self, prelude::*},
+    io::{self, prelude::*, BufRead, Write},
     process::Command as ProcessCommand,
 };
 
@@ -61,23 +61,29 @@ fn main() {
         )
         .get_matches();
 
-    let command_alias_and_args = std::env::var("SSH_ORIGINAL_COMMAND")
-        .or_else(|_| {
-            matches
-                .get_one::<String>("command")
-                .cloned()
-                .ok_or_else(|| "Command not found")
-        })
-        .unwrap_or_else(|_| die!("Usage: {} <command alias> <arguments>", crate_name!()));
-
-    let mut command_args = command_alias_and_args.split_whitespace();
-    let command_alias = command_args
-        .next()
-        .unwrap_or_else(|| die!("Usage: {} <command alias> <arguments>", crate_name!()));
-
     let config_file = std::env::var("RESH_CONFIG").unwrap_or_else(|_| "/etc/resh.toml".to_string());
     let config =
         read_config(&config_file).unwrap_or_else(|e| die!("Failed to read {}: {}", config_file, e));
+
+    if let Some(command_alias_and_args) = std::env::var("SSH_ORIGINAL_COMMAND")
+        .ok()
+        .or_else(|| matches.get_one::<String>("command").cloned())
+    {
+        let mut command_args = command_alias_and_args.split_whitespace();
+        execute_command(&config, &mut command_args);
+    } else {
+        interactive_mode(&config);
+    }
+}
+
+fn execute_command(config: &Config, command_args: &mut std::str::SplitWhitespace) -> i32 {
+    let command_alias = match command_args.next() {
+        Some(alias) => alias,
+        None => {
+            eprintln!("Usage: {} <command alias> <arguments>", crate_name!());
+            return 1;
+        }
+    };
 
     let username = std::env::var("USER").unwrap_or_else(|_| "default".to_string());
     let command = config
@@ -88,10 +94,36 @@ fn main() {
                 .get(&username)
                 .and_then(|cmds| cmds.get(command_alias))
         })
-        .or_else(|| config.commands.get(command_alias))
-        .unwrap_or_else(|| die!("Undefined command alias: {}", command_alias));
+        .or_else(|| config.commands.get(command_alias));
 
-    let exitcode =
-        run_command(command, &command_args.collect::<Vec<&str>>().join(" ")).unwrap_or(1);
-    std::process::exit(exitcode);
+    match command {
+        Some(cmd) => match run_command(cmd, &command_args.collect::<Vec<&str>>().join(" ")) {
+            Ok(code) => code,
+            Err(e) => {
+                eprintln!("Error executing command: {}", e);
+                1
+            }
+        },
+        None => {
+            eprintln!("Undefined command alias: {}", command_alias);
+            1
+        }
+    }
+}
+
+fn interactive_mode(config: &Config) {
+    let stdin = io::stdin();
+    let mut reader = stdin.lock();
+    let mut line = String::new();
+
+    loop {
+        print!("resh> ");
+        io::stdout().flush().unwrap();
+        line.clear();
+        if reader.read_line(&mut line).unwrap() == 0 {
+            break; // EOF
+        }
+        let mut command_args = line.trim().split_whitespace();
+        execute_command(config, &mut command_args);
+    }
 }
