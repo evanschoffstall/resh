@@ -9,6 +9,7 @@ use std::{
     io::{self, prelude::*, BufRead, Write},
     process::Command as ProcessCommand,
 };
+use whoami;
 
 macro_rules! die(
     ($($arg:tt)*) => { {
@@ -60,7 +61,6 @@ fn main() {
                 .value_name("COMMAND"),
         )
         .get_matches();
-
     let config_file = std::env::var("RESH_CONFIG").unwrap_or_else(|_| "/etc/resh.toml".to_string());
     let config =
         read_config(&config_file).unwrap_or_else(|e| die!("Failed to read {}: {}", config_file, e));
@@ -85,7 +85,7 @@ fn execute_command(config: &Config, command_args: &mut std::str::SplitWhitespace
         }
     };
 
-    let username = std::env::var("USER").unwrap_or_else(|_| "default".to_string());
+    let username = whoami::username();
     let command = config
         .user_commands
         .as_ref()
