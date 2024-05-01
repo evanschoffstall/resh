@@ -7,3 +7,6 @@ target/
 # Ignore vim temp and swap files
 *~
 *.sw?
+
+# npm
+node_modules/
