@@ -13,20 +13,7 @@ setup() {
 }
 
 @test "resh-test-toml-found" {
-    resh_toml=$(
-        cat <<'EOF'
-[commands]
-ls = "ls -l"
-foo = 'echo bar'
-[user_commands.root]
-lsa = "ls -lah"
-echo = "echo %@"
-foo = 'echo bar override'
-EOF
-    )
-
-    echo "$resh_toml" >resh.toml
-    run docker cp resh.toml resh-test:/etc/resh.toml
+    run docker cp test/resh.toml resh-test:/etc/resh.toml
     [ $status -eq 0 ]
     run docker exec -it resh-test ./resh -c
     [ $status -ne 0 ]
@@ -63,7 +50,6 @@ EOF
 }
 
 teardown_once() {
-    rm resh.toml >/dev/null 2>&1
     docker kill resh-test >/dev/null 2>&1
     docker rm resh-test >/dev/null 2>&1
 }
