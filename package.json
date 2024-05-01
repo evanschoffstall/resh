@@ -1,6 +1,0 @@
-{
-  "devDependencies": {
-    "bats-assert": "github:bats-core/bats-assert",
-    "bats-support": "github:bats-core/bats-support"
-  }
-}

@@ -9,4 +9,5 @@ target/
 *.sw?
 
 # npm
-node_modules/
+test/bats
+test/test_helper
