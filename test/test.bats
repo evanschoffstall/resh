@@ -6,10 +6,25 @@ setup() {
 }
 
 @test "Setup" {
-    run docker build -f test/Dockerfile -t resh-test .
+    run docker-compose -f test/docker-compose.yaml up --build -d
     [ $status -eq 0 ]
-    run docker run -d --name resh-test resh-test
+    run docker exec -it resh-test-ssh-client cp /mnt/resh-ssh-volume/ssh_host_ed25519_key /root/.ssh/ssh_host_ed25519_key
     [ $status -eq 0 ]
+    run docker exec -it resh-test-ssh-client chmod 700 /root/.ssh
+    [ $status -eq 0 ]
+    run docker exec -it resh-test-ssh-client sh -c 'echo [resh-test]:1234 $(cat /mnt/resh-ssh-volume/ssh_host_ed25519_key.pub) >> /root/.ssh/known_hosts'
+    [ $status -eq 0 ]
+    run docker exec -it resh-test-ssh-client chmod 700 /root/.ssh/known_hosts
+    [ $status -eq 0 ]
+    run docker exec -it resh-test-ssh-client cat /root/.ssh/known_hosts
+    [ $status -eq 0 ]
+
+    # Docker resh-test-ssh-client is authorized into resh-test
+    run docker exec -it resh-test-ssh-client ssh -i /root/.ssh/ssh_host_ed25519_key root@resh-test -p 1234 echo 'hello world!'
+    [ $status -eq 0 ]
+    refute_output --partial 'Connection refused'
+    refute_output --partial 'Permission denied'
+    assert_output --partial 'hello world!'
 }
 
 @test "resh-test-toml-found" {
@@ -45,11 +60,29 @@ setup() {
     assert_output --partial 'bar override'
 }
 
+@test "resh-test-ssh-entrypoint-full" {
+    run docker exec -it resh-test mkdir -p /usr/local/etc
+    [ $status -eq 0 ]
+    run docker cp test/resh.toml resh-test:/usr/local/etc/resh.toml
+    [ $status -eq 0 ]
+    run docker exec resh-test /bin/sh -c "sed -i 's/^/command=\"\\/root\\/resh\",environment=\"RESH_CONFIG=\\/usr\\/local\\/etc\\/resh.toml\", /' /root/.ssh/authorized_keys"
+    [ $status -eq 0 ]
+    run docker exec -it resh-test-ssh-client ssh -i /root/.ssh/ssh_host_ed25519_key root@resh-test -p 1234 foo
+    [ $status -eq 0 ]
+    refute_output --partial 'Connection refused'
+    refute_output --partial 'Permission denied'
+    assert_output --partial 'bar override'
+}
+
 @test "Teardown" {
     teardown_once
 }
 
 teardown_once() {
-    docker kill resh-test >/dev/null 2>&1
-    docker rm resh-test >/dev/null 2>&1
+    docker kill resh-test
+    docker kill resh-test-ssh-client
+    docker rm resh-test
+    docker rm resh-test-ssh-client
+    docker volume rm test_resh-ssh-volume
+    docker network rm test_resh-isolated-network
 }
