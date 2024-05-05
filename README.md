@@ -1,9 +1,6 @@
 # resh
 
-[![Build Status](https://api.travis-ci.org/koenw/resh.svg?branch=master)](https://travis-ci.org/koenw/resh)
-
-`resh` is a shell that only allows the execution of previously
-whitelisted commands. Use it to restrict automated ssh logins.
+`resh` is a secure restricted production-grade ssh-combatible shell built in rust
 
 ## Usage
 
