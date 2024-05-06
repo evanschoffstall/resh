@@ -1,6 +1,6 @@
 # resh
 
-`resh` is a secure restricted production-grade ssh-combatible shell built in rust
+`resh` is a secure restricted production-grade ssh-compatible shell built in rust
 
 ## Usage
 
